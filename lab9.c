@@ -1,164 +1,128 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
-// RecordType
-struct RecordType
+struct RecordType 
 {
-	int		id;
-	char	name;
-	int		order; 
+    int id;
+    char name;
+    int order;
 };
 
-struct Node
+struct HashType 
 {
-	struct RecordType record;
-	struct Node* next;
+    struct RecordType **data;
 };
 
-// Fill out this structure
-struct HashType
+int hash(int x, int hashSz) 
 {
-	struct Node* head;
-};
-
-// Compute the hash function
-int hash(int x, int hashSz)
-{
-	return x % hashSz;
+    return rand() * x % hashSz;
 }
 
 // parses input file to an integer array
-int parseData(char* inputFileName, struct RecordType** ppData)
+int parseData(char *inputFileName, struct RecordType **ppData) 
 {
-	FILE* inFile = fopen(inputFileName, "r");
-	int dataSz = 0;
-	int i, n;
-	char c;
-	struct RecordType *pRecord;
-	*ppData = NULL;
+    FILE *inFile = fopen(inputFileName, "r");
+    int dataSz = 0;
+    int i, n;
+    char c;
+    struct RecordType *pRecord;
+    *ppData = NULL;
 
-	if (inFile)
-	{
-		fscanf(inFile, "%d\n", &dataSz);
-		*ppData = (struct RecordType*) malloc(sizeof(struct RecordType) * dataSz);
-		// Implement parse data block
-		if (*ppData == NULL)
-		{
-			printf("Cannot allocate memory\n");
-			exit(-1);
-		}
-		for (i = 0; i < dataSz; ++i)
-		{
-			pRecord = *ppData + i;
-			fscanf(inFile, "%d ", &n);
-			pRecord->id = n;
-			fscanf(inFile, "%c ", &c);
-			pRecord->name = c;
-			fscanf(inFile, "%d ", &n);
-			pRecord->order = n;
-		}
+    if (inFile) {
+        fscanf(inFile, "%d\n", &dataSz);
+        *ppData = (struct RecordType *) malloc(sizeof(struct RecordType) * dataSz);
+        // Implement parse data block
+        if (*ppData == NULL) {
+            printf("Cannot allocate memory\n");
+            exit(-1);
+        }
+        for (i = 0; i < dataSz; ++i) {
+            pRecord = *ppData + i;
+            fscanf(inFile, "%d ", &n);
+            pRecord->id = n;
+            fscanf(inFile, "%c ", &c);
+            pRecord->name = c;
+            fscanf(inFile, "%d ", &n);
+            pRecord->order = n;
+        }
 
-		fclose(inFile);
-	}
+        fclose(inFile);
+    }
 
-	return dataSz;
+    return dataSz;
 }
 
 // prints the records
-void printRecords(struct RecordType pData[], int dataSz)
+void printRecords(struct RecordType pData[], int dataSz) 
 {
-	int i;
-	printf("\nRecords:\n");
-	for (i = 0; i < dataSz; ++i)
-	{
-		printf("\t%d %c %d\n", pData[i].id, pData[i].name, pData[i].order);
-	}
-	printf("\n\n");
+    int i;
+    printf("\nRecords:\n");
+    for (i = 0; i < dataSz; ++i) 
+    {
+        printf("\t%d %c %d\n", pData[i].id, pData[i].name, pData[i].order);
+    }
+    printf("\n\n");
 }
-
 
 // display records in the hash structure
 // skip the indices which are free
 // the output will be in the format:
 // index x -> id, name, order -> id, name, order ....
-
-void displayRecordsInHash(struct HashType *pHashArray, int hashSz)
+void displayRecordsInHash(struct HashType *pHashArray, int hashSz) 
 {
-	int i;
+    int i;
 
-	for (i=0;i<hashSz;++i)
-	{
-		// if index is occupied with any records, print all
-		if (pHashArray[i].head != NULL)
-        {
-            printf("index %d -> ", i);
+    for (i = 0; i < hashSz; ++i) {
+        if (pHashArray->data[i] == NULL) 
+            continue;
 
-            struct Node* current = pHashArray[i].head;
-            while (current != NULL)
-            {
-                printf("%d, %c, %d -> ", current->record.id, current->record.name, current->record.order);
-                current = current->next;
-            }
-
-            printf("NULL\n");
-        }
-	}
+        printf("index %d-> ", i);
+        for (int j = 0; pHashArray->data[i][j].id != 0; ++j) 
+            printf(" [%d, %c, %d] ", pHashArray->data[i][j].id,pHashArray->data[i][j].name, pHashArray->data[i][j].order);
+        printf("\n");
+    }
 }
 
 int main(void)
 {
-	struct RecordType *pRecords;
-	int recordSz = 0;
 
-	recordSz = parseData("input.txt", &pRecords);
-	printRecords(pRecords, recordSz);
-	// Your hash implementation
+    srand(time(NULL));
 
-	int hashSz = 10; // Size of the hash table, you can change this according to your requirements.
-    struct HashType *pHashArray = (struct HashType*)malloc(sizeof(struct HashType) * hashSz);
-    if (pHashArray == NULL)
-    {
-        printf("Cannot allocate memory for the hash table\n");
-        exit(-1);
-    }
+    struct RecordType* pRecords;
+    int recordSz = 0;
+    recordSz = parseData("input.txt", &pRecords);
+    printRecords(pRecords, recordSz);
 
-    // Initialize the hash table
-    for (int i = 0; i < hashSz; ++i)
-    {
-        pHashArray[i].head = NULL; // Set all heads to NULL to indicate empty linked lists
-    }
+    struct HashType hashTable;
+    hashTable.data = (void*) calloc(recordSz, sizeof(struct RecordType*));
 
-    // Insert records into the hash table using separate chaining
-    for (int i = 0; i < recordSz; ++i)
-    {
-        int index = hash(pRecords[i].id, hashSz);
-        struct Node* newNode = (struct Node*)malloc(sizeof(struct Node));
-        if (newNode == NULL)
-        {
-            printf("Cannot allocate memory for a new record\n");
-            exit(-1);
+    for (unsigned int i = 0; i < recordSz; ++i) 
+        hashTable.data[i] = NULL;
+
+    for (int i = 0; i < recordSz; ++i) {
+        int h = hash(pRecords[i].id, recordSz);
+        int j = 0;
+
+        while (hashTable.data[h] != NULL && hashTable.data[h][j].id != 0) 
+            ++j;
+
+        if (hashTable.data[h] == NULL) {
+            hashTable.data[h] = (void*) calloc(recordSz + 1, sizeof(struct RecordType));
+            hashTable.data[h][0].id = 0;
         }
-        newNode->record = pRecords[i];
-        newNode->next = pHashArray[index].head; // Insert the new record at the beginning of the linked list
-        pHashArray[index].head = newNode;
+
+        hashTable.data[h][j] = pRecords[i];
+        hashTable.data[h][j + 1].id = 0;
     }
 
-    // Display records in the hash table
-    displayRecordsInHash(pHashArray, hashSz);
+    displayRecordsInHash(&hashTable, recordSz);
 
-    // Don't forget to free the dynamically allocated memory.
-    for (int i = 0; i < hashSz; ++i)
-    {
-        struct Node* current = pHashArray[i].head;
-        while (current != NULL)
-        {
-            struct Node* temp = current;
-            current = current->next;
-            free(temp);
-        }
-    }
-    free(pHashArray);
+    for (int i = 0; i < recordSz; ++i) 
+        free(hashTable.data[i]);
+
+    free(hashTable.data);
+    free(pRecords);
 
     return 0;
-	
 }
